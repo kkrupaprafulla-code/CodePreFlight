@@ -249,7 +249,7 @@ Dev:
 
 ### Sub-Task 6 — Implement `src/tests/matcher.ts`
 
-**Status:** `[ ] pending`
+**Status:** `[x] done`
 
 **Intent:** Replace the stub with a real naming-convention matcher that maps each affected file to its likely test file(s).
 
