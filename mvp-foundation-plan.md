@@ -213,7 +213,7 @@ Dev:
 
 ### Sub-Task 5 — Implement `src/graph/importGraph.ts` and `src/graph/traversal.ts`
 
-**Status:** `[ ] pending`
+**Status:** `[x] done`
 
 **Intent:** Replace graph stubs with a real `madge`-powered reverse import map and a BFS traversal. This is the core dependency analysis.
 
