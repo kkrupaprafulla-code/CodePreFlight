@@ -184,7 +184,7 @@ Dev:
 
 ### Sub-Task 4 — Implement `src/diff/parser.ts` (real implementation)
 
-**Status:** `[ ] pending`
+**Status:** `[x] done`
 
 **Intent:** Replace the stub with a real implementation that uses `simple-git` to obtain a `git diff` and parses it into the `DiffResult` shape.
 
