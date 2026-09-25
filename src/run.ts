@@ -33,5 +33,5 @@ export async function run(options: CliOptions): Promise<void> {
   const scored = scoreFiles(affected, diff, testMatches);
 
   // Stage 6: render and emit the report.
-  emit({ diff, affected, testMatches, scored, options });
+  await emit({ diff, affected, testMatches, scored, options });
 }
