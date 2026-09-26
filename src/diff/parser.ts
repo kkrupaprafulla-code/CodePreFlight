@@ -149,9 +149,10 @@ export async function parseDiff(options: CliOptions): Promise<DiffResult> {
     nameStatusArgs = [options.branch, 'HEAD', '--name-status'];
     hunkArgs = [options.branch, 'HEAD'];
     baseBranch = options.branch;
-  } else {
-    // Nothing to diff — return an empty result rather than crashing.
-    return { changedFiles: [], baseBranch: null };
+  }  else {
+    nameStatusArgs = ['--name-status'];
+    hunkArgs = [];
+    baseBranch = null;
   }
 
   const [nameStatusOutput, hunkOutput] = await Promise.all([

@@ -5,8 +5,8 @@
  * The score is then mapped to a RiskLevel bucket.
  *
  * Heuristic weights (named constants — never hard-code these elsewhere):
- *   WEIGHT_DIRECTLY_CHANGED  +1 if the file is directly changed (depth 0)
- *   WEIGHT_NO_TEST_MATCH     +1 if the file has no associated test files
+ *   WEIGHT_DIRECTLY_CHANGED +1 if the file is directly changed (depth 0)
+ *   WEIGHT_NO_TEST_MATCH     +1 if the file has no associated test match
  *   WEIGHT_BARREL_FILE       +1 if the file is a barrel/index file
  *   WEIGHT_MANY_FUNCTIONS    +1 if the changed file has more than 5 modified functions
  *
@@ -17,7 +17,12 @@
  *   4+   → Critical
  */
 
-import type { AffectedFile, DiffResult, ScoredFile, TestMatch } from '../types.js';
+import type {
+  AffectedFile,
+  DiffResult,
+  ScoredFile,
+  TestMatch,
+} from '../types.js';
 
 // ---------------------------------------------------------------------------
 // Weight constants — source of truth for all heuristic weights.
@@ -27,7 +32,7 @@ import type { AffectedFile, DiffResult, ScoredFile, TestMatch } from '../types.j
 /** +1 when the file appears in the diff's changedFiles list (depth 0). */
 export const WEIGHT_DIRECTLY_CHANGED = 1;
 
-/** +1 when the file has no test match (testFiles is empty). */
+/** +1 when the file has no associated test match. */
 export const WEIGHT_NO_TEST_MATCH = 1;
 
 /** +1 when the file is a barrel/index file (basename is index.*). */
@@ -51,6 +56,23 @@ function scoreToRiskLevel(score: number): ScoredFile['risk'] {
 }
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Return true when the affected path itself is a test file.
+ *
+ * Test files can appear in the impact graph because they import affected
+ * source files. They should not receive a "no associated test match"
+ * penalty merely because they are test files themselves.
+ */
+function isTestFile(filePath: string): boolean {
+  const normalized = filePath.replace(/\\/g, '/');
+
+  return /\.(test|spec)\.(ts|tsx|js|jsx)$/.test(normalized);
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -60,7 +82,8 @@ function scoreToRiskLevel(score: number): ScoredFile['risk'] {
  * @param affected     Files returned by the BFS traversal stage.
  * @param diff         Parsed diff — used to identify directly-changed files
  *                     and their modified function counts.
- * @param testMatches  Test-matcher output — used to detect files with no tests.
+ * @param testMatches  Test-matcher output — used to detect files with no
+ *                     associated tests.
  * @returns            ScoredFile[] — one entry per affected file, in the same
  *                     order as `affected`.
  */
@@ -71,10 +94,14 @@ export function scoreFiles(
 ): ScoredFile[] {
   // Build lookup sets / maps for O(1) cross-referencing.
   const changedPathSet = new Set(diff.changedFiles.map((f) => f.path));
+
   const functionCountMap = new Map(
     diff.changedFiles.map((f) => [f.path, f.functions.length]),
   );
-  const testMatchMap = new Map(testMatches.map((t) => [t.affectedFile, t.testFiles]));
+
+  const testMatchMap = new Map(
+    testMatches.map((t) => [t.affectedFile, t.testFiles]),
+  );
 
   return affected.map((af): ScoredFile => {
     let score = 0;
@@ -86,27 +113,42 @@ export function scoreFiles(
       reasons.push('Directly changed');
     }
 
-    // Heuristic 2: no test coverage
+    // Heuristic 2: no associated test match
+    //
+    // Do not apply this penalty to test files themselves. A test file is
+    // already part of the testing layer and should not be expected to have
+    // another test file associated with it.
     const testFiles = testMatchMap.get(af.path) ?? [];
-    if (testFiles.length === 0) {
+    const testFile = isTestFile(af.path);
+
+    if (!testFile && testFiles.length === 0) {
       score += WEIGHT_NO_TEST_MATCH;
-      reasons.push('No test coverage');
+      reasons.push('No associated test match');
     }
 
     // Heuristic 3: barrel/index file
-    const basename = af.path.replace(/\\/g, '/').split('/').pop() ?? '';
+    const basename =
+      af.path.replace(/\\/g, '/').split('/').pop() ?? '';
+
     if (/^index\.(ts|tsx|js|jsx)$/.test(basename)) {
       score += WEIGHT_BARREL_FILE;
       reasons.push('Barrel/index file');
     }
 
-    // Heuristic 4: many modified functions (only meaningful for directly-changed files)
+    // Heuristic 4: many modified functions
+    //
+    // Only directly changed files have a meaningful modified-function count.
     const fnCount = functionCountMap.get(af.path) ?? 0;
+
     if (fnCount > MANY_FUNCTIONS_THRESHOLD) {
       score += WEIGHT_MANY_FUNCTIONS;
       reasons.push(`Many modified functions (${fnCount})`);
     }
 
-    return { path: af.path, risk: scoreToRiskLevel(score), reasons };
+    return {
+      path: af.path,
+      risk: scoreToRiskLevel(score),
+      reasons,
+    };
   });
 }

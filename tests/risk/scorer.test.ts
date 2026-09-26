@@ -130,14 +130,14 @@ describe('heuristic 1 — directly changed', () => {
 // Heuristic 2: no test coverage
 // ---------------------------------------------------------------------------
 
-describe('heuristic 2 — no test coverage', () => {
+describe('heuristic 2 — no associated test match', () => {
   it('adds "No test coverage" reason when testFiles is empty', () => {
     const result = scoreFiles(
       [af('src/foo.ts')],
       emptyDiff(),
       [testMatch('src/foo.ts')],           // empty testFiles
     );
-    expect(result[0]!.reasons).toContain('No test coverage');
+    expect(result[0]!.reasons).toContain('No associated test match');
   });
 
   it('adds "No test coverage" when the file has no TestMatch entry at all', () => {
@@ -146,7 +146,7 @@ describe('heuristic 2 — no test coverage', () => {
       emptyDiff(),
       [],                                  // no entry for bar.ts
     );
-    expect(result[0]!.reasons).toContain('No test coverage');
+    expect(result[0]!.reasons).toContain('No associated test match');
   });
 
   it('does not add "No test coverage" when at least one test file exists', () => {
