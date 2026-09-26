@@ -165,6 +165,9 @@ export async function parseDiff(options: CliOptions): Promise<DiffResult> {
 
   const changedFiles: ChangedFile[] = [];
   for (const [filePath, status] of statusMap) {
+    // Exclude generated/dependency files that should never appear in analysis.
+    if (filePath.startsWith('node_modules/')) continue;
+
     const hunkText = hunksByFile.get(filePath) ?? '';
     const functions = extractFunctionNames(hunkText);
     changedFiles.push({ path: filePath, status, functions });

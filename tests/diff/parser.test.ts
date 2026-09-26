@@ -248,6 +248,29 @@ describe('parseDiff — file detection', () => {
     expect(result.changedFiles).toEqual([]);
     expect(result.baseBranch).toBeNull();
   });
+
+  it('excludes files under node_modules/ from the result', async () => {
+    const nameStatus = makeNameStatus([
+      { letter: 'M', path: 'src/app.ts' },
+      { letter: 'A', path: 'node_modules/.vite/vitest/results.json' },
+    ]);
+
+    const hunk =
+      makeDiff('src/app.ts', ['export function main() {}']) +
+      makeDiff('node_modules/.vite/vitest/results.json', ['{}']);
+
+    mockDiff
+      .mockResolvedValueOnce(nameStatus)
+      .mockResolvedValueOnce(hunk);
+
+    const result = await parseDiff(makeOptions());
+
+    expect(result.changedFiles).toHaveLength(1);
+    expect(result.changedFiles[0].path).toBe('src/app.ts');
+
+    const paths = result.changedFiles.map((f) => f.path);
+    expect(paths.every((p) => !p.startsWith('node_modules/'))).toBe(true);
+  });
 });
 
 describe('parseDiff — function-name extraction', () => {
